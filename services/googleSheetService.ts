@@ -9,7 +9,7 @@ import { MOCK_INVENTORY, MOCK_CLIENTS } from '../constants';
 // 4. Copia la URL generada (termina en /exec) y pégala abajo dentro de las comillas.
 // =============================================================================================
 
-const API_URL = ''; // <-- PEGA TU URL DE APPS SCRIPT AQUÍ. EJEMPLO: 'https://script.google.com/macros/s/AKfycby.../exec'
+const API_URL = 'https://script.google.com/macros/s/AKfycbxqK8GUCAeseQ1Odde0eJ8LIJQS8OElaCywh5xpuANCWWiwpseNFqUHOV9aC8uKeoHB/exec'; // <-- PEGA TU URL DE APPS SCRIPT AQUÍ. EJEMPLO: 'https://script.google.com/macros/s/AKfycby.../exec'
 
 export const fetchInventory = async (): Promise<Product[]> => {
     if (!API_URL) {
