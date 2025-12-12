@@ -7,74 +7,60 @@ export const formatCurrency = (amount: number, currency: 'USD' | 'VES') => {
     return new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'VES' }).format(amount);
 };
 
-export const getNextPaymentDates = (count: number): string[] => {
-    const dates: string[] = [];
-    let currentDate = new Date();
-    
-    while (dates.length < count) {
-        // Advance to next candidate date
-        currentDate.setDate(currentDate.getDate() + 1);
-        
-        const day = currentDate.getDate();
-        if (day === 15 || day === 30) {
-            // Check if Feb 30 (invalid), simple fix logic handled by JS Date auto-correction usually, 
-            // but strictly speaking we want 15th and end of month or 30th.
-            // Simplified logic: strict 15 and 30.
-            
-            // If month has no 30th (Feb), JS wraps to March. We need to handle end of month.
-            // For simplicity in this prompt context, we stick to 15 and 30.
-            // If today is Feb 28, next is Mar 15.
-            
-            dates.push(currentDate.toLocaleDateString('es-VE'));
-        }
-        
-        // Handle February end of month case manually if strict "30th" is required or "End of Month"
-        // The prompt says "los 15 y 30". February doesn't have 30. We will assume last day of month for Feb.
-        const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-        if (currentDate.getMonth() === 1 && day === lastDay && lastDay < 30) {
-             // It's end of Feb
-             // This logic is complex, for safety in this MVP we stick to strict 15/30 logic
-             // which implies skipping Feb 30.
-        }
-    }
-    return dates;
+// Helper to get end of month date
+const getEndOfMonth = (year: number, month: number) => {
+    return new Date(year, month + 1, 0).getDate();
 };
 
-// Robust implementation for 15th and 30th
 export const calculateInstallments = (
     totalAmountUSD: number, 
     rate: number, 
-    initialPercentage: number = 0.4 // Changed default to 40%
+    initialPercentage: number = 0.4 
 ): { initialUSD: number, initialBs: number, installments: Installment[] } => {
     
     const initialUSD = totalAmountUSD * initialPercentage;
     const remainingUSD = totalAmountUSD - initialUSD;
-    const installmentAmountUSD = remainingUSD / 6;
+    // Round to 2 decimals to avoid weird floating points
+    const installmentAmountUSD = Math.round((remainingUSD / 6) * 100) / 100;
     
     const installments: Installment[] = [];
-    let targetDate = new Date();
+    let currentDate = new Date();
     
     for (let i = 1; i <= 6; i++) {
+        let nextDate = new Date(currentDate);
         let found = false;
+        
+        // Find next 15th or End of Month/30th
         while (!found) {
-            targetDate.setDate(targetDate.getDate() + 1);
-            const d = targetDate.getDate();
-            // Logic: Pay on 15th or 30th.
-            // Corner case: Feb has no 30th.
-            // If Month is Feb and we pass 28/29, we skip to March 15.
+            nextDate.setDate(nextDate.getDate() + 1);
+            const day = nextDate.getDate();
+            const lastDayOfMonth = getEndOfMonth(nextDate.getFullYear(), nextDate.getMonth());
             
-            if (d === 15 || d === 30) {
-                found = true;
-            }
-             // Handle End of Feb looking for "30"
-            if (targetDate.getMonth() === 1 && d > 27) {
-                // Skip to March 1st loop
+            // Logic: Pay on 15th OR the last day of the month (which covers 28, 29, 30, 31)
+            // Ideally we want "15 and 30", but Feb doesn't have 30.
+            if (day === 15 || day === lastDayOfMonth || day === 30) {
+                // If it's the 30th or last day, we take it.
+                // Avoid duplicate trigger if month has 31 days (don't trigger on 30 AND 31)
+                // If today is 30th and month has 31, we wait for next cycle? 
+                // Let's stick to strict: if we hit 15, take it. If we hit the absolute last day of month, take it.
+                // OR if we hit 30 and it's not Feb, take it.
+                
+                if (day === 15) {
+                    found = true;
+                } else if (day === lastDayOfMonth) {
+                    found = true;
+                } else if (day === 30) {
+                     // If month has 31 days, 30 is fine too as "end of month" proximity
+                     found = true;
+                }
             }
         }
         
+        currentDate = new Date(nextDate); // Update cursor
+
         installments.push({
             number: i,
-            date: targetDate.toLocaleDateString('es-VE'),
+            date: currentDate.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
             amountUSD: installmentAmountUSD,
             amountBs: installmentAmountUSD * rate
         });

@@ -1,17 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Product, CartItem, PaymentMethod, CreditProvider, SaleData, CreditPlan, Client } from './types';
-import { MOCK_INVENTORY, COMPANY_INFO, BACKEND_SCRIPT_INSTRUCTIONS } from './constants';
+import { COMPANY_INFO, BACKEND_SCRIPT_INSTRUCTIONS } from './constants';
 import { fetchInventory, saveSale, fetchClients } from './services/googleSheetService';
 import { formatCurrency, calculateInstallments } from './utils/finance';
 import Invoice from './components/Invoice';
 import { 
   ShoppingCart, 
-  CreditCard, 
   Printer, 
   Search, 
   Trash2, 
-  DollarSign, 
-  FileText,
   Smartphone,
   CheckCircle,
   X,
@@ -19,7 +16,9 @@ import {
   Code,
   User,
   CreditCard as IdCard,
-  Phone
+  Phone,
+  Calendar,
+  AlertCircle
 } from 'lucide-react';
 
 export default function App() {
@@ -82,6 +81,8 @@ export default function App() {
       installments: plan.installments
     };
   };
+
+  const creditPlanPreview = getCreditPlan();
 
   const handleAddToCart = (product: Product) => {
     const existing = cart.find(item => item.id === product.id);
@@ -181,7 +182,10 @@ export default function App() {
     message += `------------------\n`;
     if (saleComplete.paymentMethod === PaymentMethod.CREDIT) {
        message += `Método: Crédito (${saleComplete.creditDetails?.provider})\n`;
-       message += `Próxima cuota: ${saleComplete.creditDetails?.installments[0].date}`;
+       const nextPayment = saleComplete.creditDetails?.installments[0];
+       if (nextPayment) {
+           message += `Próxima cuota: ${nextPayment.date} (${formatCurrency(nextPayment.amountUSD, 'USD')})`;
+       }
     } else {
        message += `Método: Contado`;
     }
@@ -191,7 +195,21 @@ export default function App() {
   };
 
   const printInvoice = () => {
+    // Change document title to affect PDF filename
+    const originalTitle = document.title;
+    if (saleComplete) {
+        // Sanitize filename
+        const safeName = saleComplete.clientName.replace(/[^a-z0-9]/gi, '_');
+        const safeId = saleComplete.clientId.replace(/[^a-z0-9]/gi, '');
+        document.title = `RECIBO_${safeName}_${safeId}`;
+    }
+    
     window.print();
+    
+    // Revert title after a small delay to ensure print dialog caught it
+    setTimeout(() => {
+        document.title = originalTitle;
+    }, 1000);
   };
 
   // Filter products
@@ -493,7 +511,7 @@ export default function App() {
              </div>
              
              {/* Credit Options */}
-             {paymentMethod === PaymentMethod.CREDIT && (
+             {paymentMethod === PaymentMethod.CREDIT && creditPlanPreview && (
                <div className="mt-3 bg-white p-3 rounded border border-movilnet-orange/30 animate-in fade-in slide-in-from-top-2">
                  <label className="block text-xs font-bold text-gray-500 mb-1">Plataforma</label>
                  <select 
@@ -504,16 +522,25 @@ export default function App() {
                    {Object.values(CreditProvider).map(p => <option key={p} value={p}>{p}</option>)}
                  </select>
                  
-                 <div className="text-xs space-y-1 text-gray-600">
-                    <div className="flex justify-between font-bold">
+                 {/* Breakdown Visualizer */}
+                 <div className="text-xs space-y-2 text-gray-600 mt-2 bg-gray-50 p-2 rounded">
+                    <div className="flex justify-between font-bold text-movilnet-blue border-b pb-1 border-gray-200">
                        <span>Inicial (40%):</span>
-                       <span>{formatCurrency(totalUSD * 0.4, 'USD')}</span>
+                       <span>{formatCurrency(creditPlanPreview.initialPaymentUSD, 'USD')}</span>
                     </div>
-                    <div className="flex justify-between">
-                       <span>6 Cuotas Quincenales de:</span>
-                       <span>{formatCurrency((totalUSD * 0.6) / 6, 'USD')}</span>
+                    
+                    <div className="pt-1 space-y-1">
+                        <div className="flex items-center gap-1 text-gray-400 text-[10px] uppercase font-bold">
+                            <Calendar size={10} />
+                            <span>Cronograma de Cuotas:</span>
+                        </div>
+                        {creditPlanPreview.installments.map((inst) => (
+                             <div key={inst.number} className="flex justify-between pl-2">
+                                <span>{inst.date}</span>
+                                <span className="font-mono font-medium">{formatCurrency(inst.amountUSD, 'USD')}</span>
+                             </div>
+                        ))}
                     </div>
-                    <p className="text-[10px] text-gray-400 mt-1">Fechas: 15 y 30 de cada mes</p>
                  </div>
                </div>
              )}
