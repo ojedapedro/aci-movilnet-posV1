@@ -74,7 +74,7 @@ export default function App() {
   // Credit Calculation
   const getCreditPlan = (): CreditPlan | undefined => {
     if (paymentMethod !== PaymentMethod.CREDIT) return undefined;
-    const plan = calculateInstallments(totalUSD, exchangeRate); // Default 50% initial
+    const plan = calculateInstallments(totalUSD, exchangeRate, 0.4); // 40% initial
     return {
       provider: creditProvider,
       initialPaymentUSD: plan.initialUSD,
@@ -506,12 +506,12 @@ export default function App() {
                  
                  <div className="text-xs space-y-1 text-gray-600">
                     <div className="flex justify-between font-bold">
-                       <span>Inicial (50%):</span>
-                       <span>{formatCurrency(totalUSD * 0.5, 'USD')}</span>
+                       <span>Inicial (40%):</span>
+                       <span>{formatCurrency(totalUSD * 0.4, 'USD')}</span>
                     </div>
                     <div className="flex justify-between">
                        <span>6 Cuotas Quincenales de:</span>
-                       <span>{formatCurrency((totalUSD * 0.5) / 6, 'USD')}</span>
+                       <span>{formatCurrency((totalUSD * 0.6) / 6, 'USD')}</span>
                     </div>
                     <p className="text-[10px] text-gray-400 mt-1">Fechas: 15 y 30 de cada mes</p>
                  </div>
@@ -549,7 +549,7 @@ export default function App() {
                 <h3 className="font-bold text-lg">Backend Google Apps Script Code</h3>
                 <button onClick={() => setDevModalOpen(false)}><X size={24} /></button>
               </div>
-              <p className="text-sm text-gray-500 mb-2">Copia este código en tu Google Sheet (Extensiones > Apps Script) para conectar la base de datos.</p>
+              <p className="text-sm text-gray-500 mb-2">Copia este código en tu Google Sheet (Extensiones &gt; Apps Script) para conectar la base de datos.</p>
               <textarea 
                 className="flex-1 w-full bg-gray-900 text-green-400 font-mono text-xs p-4 rounded overflow-auto"
                 readOnly

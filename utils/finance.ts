@@ -44,7 +44,7 @@ export const getNextPaymentDates = (count: number): string[] => {
 export const calculateInstallments = (
     totalAmountUSD: number, 
     rate: number, 
-    initialPercentage: number = 0.5
+    initialPercentage: number = 0.4 // Changed default to 40%
 ): { initialUSD: number, initialBs: number, installments: Installment[] } => {
     
     const initialUSD = totalAmountUSD * initialPercentage;

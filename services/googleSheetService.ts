@@ -1,13 +1,20 @@
 import { Product, SaleData, SheetResponse, Client } from '../types';
 import { MOCK_INVENTORY, MOCK_CLIENTS } from '../constants';
 
-// NOTE: In a real deployment, you would replace this URL with the one generated 
-// by publishing the Google Apps Script.
-const API_URL = 'https://script.google.com/macros/s/AKfycbxqK8GUCAeseQ1Odde0eJ8LIJQS8OElaCywh5xpuANCWWiwpseNFqUHOV9aC8uKeoHB/exec'; 
+// =============================================================================================
+// INSTRUCCIONES:
+// 1. Ve a tu Google Sheet > Extensiones > Apps Script.
+// 2. Publica el script como "Aplicación Web".
+// 3. Importante: En "Quién tiene acceso", selecciona "Cualquier usuario" (Anyone).
+// 4. Copia la URL generada (termina en /exec) y pégala abajo dentro de las comillas.
+// =============================================================================================
+
+const API_URL = ''; // <-- PEGA TU URL DE APPS SCRIPT AQUÍ. EJEMPLO: 'https://script.google.com/macros/s/AKfycby.../exec'
 
 export const fetchInventory = async (): Promise<Product[]> => {
     if (!API_URL) {
         // Return mock data if no API URL is set (Development Mode)
+        console.warn("Modo Demo: API_URL no configurada en services/googleSheetService.ts");
         return new Promise((resolve) => {
             setTimeout(() => resolve(MOCK_INVENTORY), 800);
         });
@@ -46,7 +53,7 @@ export const saveSale = async (sale: SaleData): Promise<SheetResponse> => {
     if (!API_URL) {
         console.log("Saving sale (MOCK):", sale);
         return new Promise((resolve) => {
-            setTimeout(() => resolve({ success: true, message: "Venta registrada exitosamente (Modo Demo)" }), 1500);
+            setTimeout(() => resolve({ success: true, message: "Venta registrada exitosamente (Modo Demo - Configura API_URL)" }), 1500);
         });
     }
 
@@ -59,6 +66,6 @@ export const saveSale = async (sale: SaleData): Promise<SheetResponse> => {
         return result;
     } catch (error) {
         console.error("Error saving sale", error);
-        return { success: false, message: "Error de conexión con Google Sheets" };
+        return { success: false, message: "Error de conexión con Google Sheets. Verifica la URL y los permisos." };
     }
 };
