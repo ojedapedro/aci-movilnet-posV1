@@ -2,19 +2,16 @@ import { Product, SaleData, SheetResponse, Client } from '../types';
 import { MOCK_INVENTORY, MOCK_CLIENTS } from '../constants';
 
 // =============================================================================================
-// INSTRUCCIONES:
-// 1. Ve a tu Google Sheet > Extensiones > Apps Script.
-// 2. Publica el script como "Aplicación Web".
-// 3. Importante: En "Quién tiene acceso", selecciona "Cualquier usuario" (Anyone).
-// 4. Copia la URL generada (termina en /exec) y pégala abajo dentro de las comillas.
+// ¡ATENCIÓN!
+// Pega aquí la URL de tu Web App de Google Apps Script.
+// Pasos: Extensiones > Apps Script > Implementar > Nueva implementación > Web App > "Cualquier usuario"
 // =============================================================================================
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbxqK8GUCAeseQ1Odde0eJ8LIJQS8OElaCywh5xpuANCWWiwpseNFqUHOV9aC8uKeoHB/exec'; // <-- PEGA TU URL DE APPS SCRIPT AQUÍ. EJEMPLO: 'https://script.google.com/macros/s/AKfycby.../exec'
+const API_URL = ''; // <-- PEGA TU URL DE APPS SCRIPT AQUÍ
 
 export const fetchInventory = async (): Promise<Product[]> => {
     if (!API_URL) {
-        // Return mock data if no API URL is set (Development Mode)
-        console.warn("Modo Demo: API_URL no configurada en services/googleSheetService.ts");
+        console.warn("Modo Demo: API_URL no configurada. Usando datos de prueba.");
         return new Promise((resolve) => {
             setTimeout(() => resolve(MOCK_INVENTORY), 800);
         });
@@ -32,7 +29,6 @@ export const fetchInventory = async (): Promise<Product[]> => {
 
 export const fetchClients = async (): Promise<Client[]> => {
     if (!API_URL) {
-        // Return mock data if no API URL is set (Development Mode)
         return new Promise((resolve) => {
             setTimeout(() => resolve(MOCK_CLIENTS), 600);
         });
@@ -41,7 +37,6 @@ export const fetchClients = async (): Promise<Client[]> => {
     try {
         const response = await fetch(`${API_URL}?action=clients`);
         const data = await response.json();
-        // Ensure data matches Client interface
         return Array.isArray(data) ? data : [];
     } catch (error) {
         console.error("Error fetching clients", error);
@@ -53,7 +48,7 @@ export const saveSale = async (sale: SaleData): Promise<SheetResponse> => {
     if (!API_URL) {
         console.log("Saving sale (MOCK):", sale);
         return new Promise((resolve) => {
-            setTimeout(() => resolve({ success: true, message: "Venta registrada exitosamente (Modo Demo - Configura API_URL)" }), 1500);
+            setTimeout(() => resolve({ success: true, message: "Venta registrada exitosamente (Modo Demo)" }), 1500);
         });
     }
 
@@ -66,6 +61,6 @@ export const saveSale = async (sale: SaleData): Promise<SheetResponse> => {
         return result;
     } catch (error) {
         console.error("Error saving sale", error);
-        return { success: false, message: "Error de conexión con Google Sheets. Verifica la URL y los permisos." };
+        return { success: false, message: "Error de conexión. Verifica la URL de Apps Script." };
     }
 };
