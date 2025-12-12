@@ -19,26 +19,30 @@ export const MOCK_CLIENTS = [
 // Instructions for the user to deploy the backend
 export const BACKEND_SCRIPT_INSTRUCTIONS = `
 /**
- * ==========================================
- * CÓDIGO BACKEND PARA GOOGLE APPS SCRIPT
- * ==========================================
- * COPIA Y PEGA ESTO EN: Extensiones > Apps Script
+ * ==============================================================
+ *  ⚠️ INSTRUCCIONES IMPORTANTES ⚠️
+ * ==============================================================
+ * 1. BORRA TODO EL CÓDIGO QUE HAYA ACTUALMENTE EN ESTE ARCHIVO.
+ *    (El archivo debe quedar totalmente en blanco antes de pegar).
+ * 2. PEGA ESTE CÓDIGO.
+ * 3. GUARDA (Icono de Disquete).
+ * 4. DALE A "IMPLEMENTAR" > "GESTIONAR IMPLEMENTACIONES" > EDITAR > VERSION "NUEVA" > LISTO.
+ * 
  * HOJA ID: 1HTkRzSs8yavFTT-zqh-lHA_S2Be2X2A5Y1XMDyN13kw
  */
 
-const SHEET_ID = "1HTkRzSs8yavFTT-zqh-lHA_S2Be2X2A5Y1XMDyN13kw";
+var SHEET_ID = "1HTkRzSs8yavFTT-zqh-lHA_S2Be2X2A5Y1XMDyN13kw";
 
 function setup() {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
+  var ss = SpreadsheetApp.openById(SHEET_ID);
   
-  // 1. Configurar Hoja VENTAS
-  let salesSheet = ss.getSheetByName("Ventas");
+  // --- 1. Configurar Hoja VENTAS ---
+  var salesSheet = ss.getSheetByName("Ventas");
   if (!salesSheet) {
     salesSheet = ss.insertSheet("Ventas");
   }
   
-  // Encabezados Hoja Ventas
-  const headers = [
+  var headers = [
     "Fecha", 
     "Nombre Cliente", 
     "Cédula", 
@@ -53,10 +57,11 @@ function setup() {
     "Estado"
   ];
   
-  // Verificar si ya existen los encabezados, si no, ponerlos
-  const firstRow = salesSheet.getRange(1, 1, 1, headers.length).getValues()[0];
-  if (firstRow[0] !== "Fecha") {
-    salesSheet.clear();
+  // Verificar encabezados
+  var range = salesSheet.getRange(1, 1, 1, headers.length);
+  var values = range.getValues()[0];
+  if (values[0] !== "Fecha") {
+    salesSheet.clear(); // Limpiar si no coincide estructura
     salesSheet.appendRow(headers);
     salesSheet.getRange(1, 1, 1, headers.length)
       .setFontWeight("bold")
@@ -64,10 +69,11 @@ function setup() {
       .setFontColor("white");
   }
 
-  // 2. Hoja PROCDINVENT (Inventario)
-  let invSheet = ss.getSheetByName("PROCDINVENT");
+  // --- 2. Hoja PROCDINVENT (Inventario) ---
+  var invSheet = ss.getSheetByName("PROCDINVENT");
   if (!invSheet) {
     invSheet = ss.insertSheet("PROCDINVENT");
+    // Crear encabezados solo si es nueva
     invSheet.getRange("R2").setValue("IMEI");
     invSheet.getRange("S2").setValue("Nombre Producto");
     invSheet.getRange("T2").setValue("Categoría");
@@ -78,320 +84,147 @@ function setup() {
 }
 
 function doGet(e) {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  const action = e.parameter.action || 'inventory';
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var action = e.parameter.action || 'inventory';
 
-  // --- OBTENER CLIENTES (Historial de Ventas) ---
+  // --- OBTENER CLIENTES (Historial) ---
   if (action === 'clients') {
-    const sheet = ss.getSheetByName("Ventas");
+    var sheet = ss.getSheetByName("Ventas");
     if (!sheet) return ContentService.createTextOutput("[]");
     
-    const lastRow = sheet.getLastRow();
+    var lastRow = sheet.getLastRow();
     if (lastRow < 2) return ContentService.createTextOutput("[]");
 
-    // Leer columnas B (Nombre), C (Cédula), D (Teléfono) -> Indices 1, 2, 3
-    const data = sheet.getRange(2, 2, lastRow - 1, 3).getValues();
-    const clientsMap = new Map();
-    
-    // Recorrer de abajo hacia arriba para tener los datos más recientes
-    for (let i = data.length - 1; i >= 0; i--) {
-      const name = data[i][0];
-      const id = String(data[i][1]);
-      const phone = String(data[i][2]);
+    // Columnas B, C, D (Nombre, Cédula, Teléfono)
+    var data = sheet.getRange(2, 2, lastRow - 1, 3).getValues();
+    var clientsMap = {}; // Usamos objeto simple para compatibilidad
+    var clientsList = [];
+
+    // Recorrer inversamente para obtener los más recientes
+    for (var i = data.length - 1; i >= 0; i--) {
+      var name = data[i][0];
+      var id = String(data[i][1]);
+      var phone = String(data[i][2]);
       
-      if (id && name && !clientsMap.has(id)) {
-        clientsMap.set(id, { name, id, phone });
+      if (id && name && !clientsMap[id]) {
+        clientsMap[id] = true;
+        clientsList.push({ name: name, id: id, phone: phone });
       }
     }
     
-    return ContentService.createTextOutput(JSON.stringify(Array.from(clientsMap.values())))
+    return ContentService.createTextOutput(JSON.stringify(clientsList))
       .setMimeType(ContentService.MimeType.JSON);
   }
 
   // --- OBTENER INVENTARIO (PROCDINVENT) ---
-  const sheet = ss.getSheetByName("PROCDINVENT");
+  var sheet = ss.getSheetByName("PROCDINVENT");
   if (!sheet) return ContentService.createTextOutput(JSON.stringify([]));
 
-  const lastRow = sheet.getLastRow();
-  // Datos empiezan en fila 3, Columnas R-V
+  var lastRow = sheet.getLastRow();
+  // Datos empiezan fila 3, Columnas R(18) a V(22)
   if (lastRow < 3) return ContentService.createTextOutput(JSON.stringify([]));
   
-  // Rango R3:V_lastRow
-  const data = sheet.getRange(3, 18, lastRow - 2, 5).getValues();
+  var data = sheet.getRange(3, 18, lastRow - 2, 5).getValues();
   
-  const inventory = data.map(row => ({
-    code: String(row[0]),       // R: IMEI
-    name: String(row[1]),       // S: Nombre
-    category: String(row[2]),   // T: Categoría
-    priceUSD: Number(row[3]) || 0, // U: Precio
-    stock: Number(row[4]) || 0  // V: Stock
-  })).filter(item => item.name && item.code);
+  var inventory = [];
+  for (var i = 0; i < data.length; i++) {
+    var row = data[i];
+    // Validar que tenga Nombre (col 1) y Stock (col 4) > 0
+    if (row[1] && row[0]) {
+       inventory.push({
+         code: String(row[0]),       // R: IMEI
+         name: String(row[1]),       // S: Nombre
+         category: String(row[2]),   // T: Categ
+         priceUSD: Number(row[3]) || 0, // U: Precio
+         stock: Number(row[4]) || 0  // V: Stock
+       });
+    }
+  }
 
   return ContentService.createTextOutput(JSON.stringify(inventory))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
 function doPost(e) {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  const sheet = ss.getSheetByName("Ventas");
-  
-  const data = JSON.parse(e.postData.contents);
-  
-  // Usamos concatenación simple para evitar errores de sintaxis en Apps Script
-  const itemString = data.items.map(function(i) {
-    return i.code + " - " + i.name + " (x" + i.quantity + ")";
-  }).join(", ");
-  
-  // Formatear Crédito
-  let creditString = "N/A";
-  if (data.creditDetails) {
-    creditString = data.creditDetails.provider + 
-      " | Inicial: $" + data.creditDetails.initialPaymentUSD + 
-      " | Cuotas: " + data.creditDetails.installments.length;
-  }
-
-  const dateStr = new Date(data.date).toLocaleString("es-VE");
-
-  // Columnas: Fecha, Cliente, Cédula, Teléfono, IMEI, Total $, Total Bs, Tasa, Pago, Detalles, Obs, Estado
-  sheet.appendRow([
-    dateStr,
-    data.clientName,
-    String(data.clientId),
-    String(data.clientPhone),
-    itemString,
-    data.totalUSD,
-    data.totalBs,
-    data.exchangeRate,
-    data.paymentMethod,
-    creditString,
-    data.observations,
-    "Completado"
-  ]);
-  
-  updateStockInProcdinvent(data.items);
-  
-  return ContentService.createTextOutput(JSON.stringify({success: true, message: "Venta registrada"}))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-function updateStockInProcdinvent(items) {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  const sheet = ss.getSheetByName("PROCDINVENT");
-  const lastRow = sheet.getLastRow();
-  
-  if (lastRow < 3) return; // No hay inventario para actualizar
-
-  // Columna R (18) = IMEI/Código
-  const imeiValues = sheet.getRange(3, 18, lastRow - 2, 1).getValues().flat();
-  
-  items.forEach(function(item) {
-    // Buscar índice del código (convertimos a String para asegurar coincidencia)
-    const index = imeiValues.findIndex(function(code) { return String(code) === String(item.code); });
+  try {
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var sheet = ss.getSheetByName("Ventas");
     
-    if (index !== -1) {
-      const row = index + 3; // +3 porque los datos empiezan en fila 3
-      // Stock está en columna V (22)
-      const stockCell = sheet.getRange(row, 22);
-      const currentStock = Number(stockCell.getValue());
-      stockCell.setValue(currentStock - item.quantity);
+    var data = JSON.parse(e.postData.contents);
+    
+    // Concatenación segura
+    var itemString = "";
+    if (data.items && data.items.length) {
+      itemString = data.items.map(function(i) {
+        return i.code + " - " + i.name + " (x" + i.quantity + ")";
+      }).join(", ");
     }
-  });
-}
-`export const COMPANY_INFO = {
-    name: 'ACI Movilnet',
-    address: 'Av. Lara, Valencia, Venezuela',
-    phone: '0426 7408955',
-    logoUrl: 'https://i.ibb.co/hFq3BtD9/Movilnet-logo-0.png'
-};
-
-export const MOCK_INVENTORY = [
-    { id: '1', code: '8958060000', name: 'Simcard Triple Corte', priceUSD: 5, stock: 100 },
-    { id: '2', code: '1234567890', name: 'Samsung Galaxy A14', priceUSD: 150, stock: 10 },
-    { id: '3', code: '9876543210', name: 'Xiaomi Redmi Note 12', priceUSD: 180, stock: 8 },
-];
-
-export const MOCK_CLIENTS = [
-    { name: 'Juan Perez', id: 'V12345678', phone: '04141234567' },
-    { name: 'Maria Rodriguez', id: 'V87654321', phone: '04241234567' },
-];
-
-// Instructions for the user to deploy the backend
-export const BACKEND_SCRIPT_INSTRUCTIONS = `
-/**
- * ==========================================
- * CÓDIGO BACKEND PARA GOOGLE APPS SCRIPT
- * ==========================================
- * COPIA Y PEGA ESTO EN: Extensiones > Apps Script
- * HOJA ID: 1HTkRzSs8yavFTT-zqh-lHA_S2Be2X2A5Y1XMDyN13kw
- */
-
-const SHEET_ID = "1HTkRzSs8yavFTT-zqh-lHA_S2Be2X2A5Y1XMDyN13kw";
-
-function setup() {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  
-  // 1. Configurar Hoja VENTAS
-  let salesSheet = ss.getSheetByName("Ventas");
-  if (!salesSheet) {
-    salesSheet = ss.insertSheet("Ventas");
-  }
-  
-  // Encabezados Hoja Ventas
-  const headers = [
-    "Fecha", 
-    "Nombre Cliente", 
-    "Cédula", 
-    "Teléfono", 
-    "IMEI / Productos", 
-    "Precio Total ($)", 
-    "Precio Total (Bs)", 
-    "Tasa Cambio", 
-    "Forma Pago", 
-    "Detalles Crédito", 
-    "Observaciones", 
-    "Estado"
-  ];
-  
-  // Verificar si ya existen los encabezados, si no, ponerlos
-  const firstRow = salesSheet.getRange(1, 1, 1, headers.length).getValues()[0];
-  if (firstRow[0] !== "Fecha") {
-    salesSheet.clear();
-    salesSheet.appendRow(headers);
-    salesSheet.getRange(1, 1, 1, headers.length)
-      .setFontWeight("bold")
-      .setBackground("#F37021") // Naranja Movilnet
-      .setFontColor("white");
-  }
-
-  // 2. Hoja PROCDINVENT (Inventario)
-  let invSheet = ss.getSheetByName("PROCDINVENT");
-  if (!invSheet) {
-    invSheet = ss.insertSheet("PROCDINVENT");
-    invSheet.getRange("R2").setValue("IMEI");
-    invSheet.getRange("S2").setValue("Nombre Producto");
-    invSheet.getRange("T2").setValue("Categoría");
-    invSheet.getRange("U2").setValue("Precio Base");
-    invSheet.getRange("V2").setValue("Stock");
-    invSheet.getRange("R2:V2").setFontWeight("bold").setBackground("#00549F").setFontColor("white");
-  }
-}
-
-function doGet(e) {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  const action = e.parameter.action || 'inventory';
-
-  // --- OBTENER CLIENTES (Historial de Ventas) ---
-  if (action === 'clients') {
-    const sheet = ss.getSheetByName("Ventas");
-    if (!sheet) return ContentService.createTextOutput("[]");
     
-    const lastRow = sheet.getLastRow();
-    if (lastRow < 2) return ContentService.createTextOutput("[]");
+    // Crédito
+    var creditString = "N/A";
+    if (data.creditDetails) {
+      creditString = data.creditDetails.provider + 
+        " | Inicial: $" + data.creditDetails.initialPaymentUSD + 
+        " | Cuotas: " + (data.creditDetails.installments ? data.creditDetails.installments.length : 0);
+    }
 
-    // Leer columnas B (Nombre), C (Cédula), D (Teléfono) -> Indices 1, 2, 3
-    const data = sheet.getRange(2, 2, lastRow - 1, 3).getValues();
-    const clientsMap = new Map();
+    // Fecha con formato local Venezuela (GMT-4)
+    var dateObj = new Date(data.date);
+    var dateStr = Utilities.formatDate(dateObj, "GMT-4", "dd/MM/yyyy hh:mm a");
+
+    sheet.appendRow([
+      dateStr,
+      data.clientName,
+      String(data.clientId),
+      String(data.clientPhone),
+      itemString,
+      data.totalUSD,
+      data.totalBs,
+      data.exchangeRate,
+      data.paymentMethod,
+      creditString,
+      data.observations,
+      "Completado"
+    ]);
     
-    // Recorrer de abajo hacia arriba para tener los datos más recientes
-    for (let i = data.length - 1; i >= 0; i--) {
-      const name = data[i][0];
-      const id = String(data[i][1]);
-      const phone = String(data[i][2]);
+    if (data.items) {
+      updateStockInProcdinvent(data.items);
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({success: true, message: "Venta registrada exitosamente"}))
+      .setMimeType(ContentService.MimeType.JSON);
       
-      if (id && name && !clientsMap.has(id)) {
-        clientsMap.set(id, { name, id, phone });
-      }
-    }
-    
-    return ContentService.createTextOutput(JSON.stringify(Array.from(clientsMap.values())))
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({success: false, message: "Error: " + err.toString()}))
       .setMimeType(ContentService.MimeType.JSON);
   }
-
-  // --- OBTENER INVENTARIO (PROCDINVENT) ---
-  const sheet = ss.getSheetByName("PROCDINVENT");
-  if (!sheet) return ContentService.createTextOutput(JSON.stringify([]));
-
-  const lastRow = sheet.getLastRow();
-  // Datos empiezan en fila 3, Columnas R-V
-  if (lastRow < 3) return ContentService.createTextOutput(JSON.stringify([]));
-  
-  // Rango R3:V_lastRow
-  const data = sheet.getRange(3, 18, lastRow - 2, 5).getValues();
-  
-  const inventory = data.map(row => ({
-    code: String(row[0]),       // R: IMEI
-    name: String(row[1]),       // S: Nombre
-    category: String(row[2]),   // T: Categoría
-    priceUSD: Number(row[3]) || 0, // U: Precio
-    stock: Number(row[4]) || 0  // V: Stock
-  })).filter(item => item.name && item.code);
-
-  return ContentService.createTextOutput(JSON.stringify(inventory))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-function doPost(e) {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  const sheet = ss.getSheetByName("Ventas");
-  
-  const data = JSON.parse(e.postData.contents);
-  
-  // Usamos concatenación simple para evitar errores de sintaxis en Apps Script
-  const itemString = data.items.map(function(i) {
-    return i.code + " - " + i.name + " (x" + i.quantity + ")";
-  }).join(", ");
-  
-  // Formatear Crédito
-  let creditString = "N/A";
-  if (data.creditDetails) {
-    creditString = data.creditDetails.provider + 
-      " | Inicial: $" + data.creditDetails.initialPaymentUSD + 
-      " | Cuotas: " + data.creditDetails.installments.length;
-  }
-
-  const dateStr = new Date(data.date).toLocaleString("es-VE");
-
-  // Columnas: Fecha, Cliente, Cédula, Teléfono, IMEI, Total $, Total Bs, Tasa, Pago, Detalles, Obs, Estado
-  sheet.appendRow([
-    dateStr,
-    data.clientName,
-    String(data.clientId),
-    String(data.clientPhone),
-    itemString,
-    data.totalUSD,
-    data.totalBs,
-    data.exchangeRate,
-    data.paymentMethod,
-    creditString,
-    data.observations,
-    "Completado"
-  ]);
-  
-  updateStockInProcdinvent(data.items);
-  
-  return ContentService.createTextOutput(JSON.stringify({success: true, message: "Venta registrada"}))
-    .setMimeType(ContentService.MimeType.JSON);
 }
 
 function updateStockInProcdinvent(items) {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  const sheet = ss.getSheetByName("PROCDINVENT");
-  const lastRow = sheet.getLastRow();
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var sheet = ss.getSheetByName("PROCDINVENT");
+  var lastRow = sheet.getLastRow();
   
-  if (lastRow < 3) return; // No hay inventario para actualizar
+  if (lastRow < 3) return;
 
-  // Columna R (18) = IMEI/Código
-  const imeiValues = sheet.getRange(3, 18, lastRow - 2, 1).getValues().flat();
+  // Columna R (18) = IMEI
+  var imeiValues = sheet.getRange(3, 18, lastRow - 2, 1).getValues();
+  
+  // Aplanar array
+  var flatImeis = [];
+  for (var k = 0; k < imeiValues.length; k++) {
+    flatImeis.push(String(imeiValues[k][0]));
+  }
   
   items.forEach(function(item) {
-    // Buscar índice del código (convertimos a String para asegurar coincidencia)
-    const index = imeiValues.findIndex(function(code) { return String(code) === String(item.code); });
+    var codeToFind = String(item.code);
+    var index = flatImeis.indexOf(codeToFind);
     
     if (index !== -1) {
-      const row = index + 3; // +3 porque los datos empiezan en fila 3
-      // Stock está en columna V (22)
-      const stockCell = sheet.getRange(row, 22);
-      const currentStock = Number(stockCell.getValue());
+      var row = index + 3; // +3 offset
+      // Columna V (22) es Stock
+      var stockCell = sheet.getRange(row, 22);
+      var currentStock = Number(stockCell.getValue());
       stockCell.setValue(currentStock - item.quantity);
     }
   });
