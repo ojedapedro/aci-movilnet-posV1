@@ -42,7 +42,7 @@ function setup() {
     salesSheet = ss.insertSheet("Ventas");
   }
   
-  var headers = [
+  var salesHeaders = [
     "Fecha", 
     "Nombre Cliente", 
     "Cédula", 
@@ -57,29 +57,27 @@ function setup() {
     "Estado"
   ];
   
-  // Verificar encabezados
-  var range = salesSheet.getRange(1, 1, 1, headers.length);
+  // Verificar encabezados de Ventas
+  var range = salesSheet.getRange(1, 1, 1, salesHeaders.length);
   var values = range.getValues()[0];
   if (values[0] !== "Fecha") {
-    salesSheet.clear(); // Limpiar si no coincide estructura
-    salesSheet.appendRow(headers);
-    salesSheet.getRange(1, 1, 1, headers.length)
-      .setFontWeight("bold")
-      .setBackground("#F37021") // Naranja Movilnet
-      .setFontColor("white");
+    // Solo si está vacía o incorrecta, agregamos encabezados
+    if (salesSheet.getLastRow() < 1) {
+       salesSheet.appendRow(salesHeaders);
+       salesSheet.getRange(1, 1, 1, salesHeaders.length)
+         .setFontWeight("bold")
+         .setBackground("#F37021") // Naranja Movilnet
+         .setFontColor("white");
+    }
   }
 
-  // --- 2. Hoja PROCDINVENT (Inventario) ---
-  var invSheet = ss.getSheetByName("PROCDINVENT");
+  // --- 2. Configurar Hoja PRODUCTOS ---
+  // Estructura: IMEI(A), Nombre(B), Categ(C), Precio(D), Stock(E), Proveedor(F), Fecha(G), Barcode(H)
+  var invSheet = ss.getSheetByName("Productos");
   if (!invSheet) {
-    invSheet = ss.insertSheet("PROCDINVENT");
-    // Crear encabezados solo si es nueva
-    invSheet.getRange("R2").setValue("IMEI");
-    invSheet.getRange("S2").setValue("Nombre Producto");
-    invSheet.getRange("T2").setValue("Categoría");
-    invSheet.getRange("U2").setValue("Precio Base");
-    invSheet.getRange("V2").setValue("Stock");
-    invSheet.getRange("R2:V2").setFontWeight("bold").setBackground("#00549F").setFontColor("white");
+    invSheet = ss.insertSheet("Productos");
+    invSheet.appendRow(["IMEI", "Nombre Producto", "Categoría", "Precio Base", "Stock", "Proveedor", "Fecha Ingreso", "BARCODE"]);
+    invSheet.getRange("A1:H1").setFontWeight("bold").setBackground("#00549F").setFontColor("white");
   }
 }
 
@@ -87,7 +85,7 @@ function doGet(e) {
   var ss = SpreadsheetApp.openById(SHEET_ID);
   var action = e.parameter.action || 'inventory';
 
-  // --- OBTENER CLIENTES (Historial) ---
+  // --- OBTENER CLIENTES (Historial de Ventas) ---
   if (action === 'clients') {
     var sheet = ss.getSheetByName("Ventas");
     if (!sheet) return ContentService.createTextOutput("[]");
@@ -95,12 +93,10 @@ function doGet(e) {
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return ContentService.createTextOutput("[]");
 
-    // Columnas B, C, D (Nombre, Cédula, Teléfono)
     var data = sheet.getRange(2, 2, lastRow - 1, 3).getValues();
-    var clientsMap = {}; // Usamos objeto simple para compatibilidad
+    var clientsMap = {}; 
     var clientsList = [];
 
-    // Recorrer inversamente para obtener los más recientes
     for (var i = data.length - 1; i >= 0; i--) {
       var name = data[i][0];
       var id = String(data[i][1]);
@@ -116,27 +112,46 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 
-  // --- OBTENER INVENTARIO (PROCDINVENT) ---
-  var sheet = ss.getSheetByName("PROCDINVENT");
+  // --- OBTENER INVENTARIO (Hoja: Productos) ---
+  var sheet = ss.getSheetByName("Productos");
   if (!sheet) return ContentService.createTextOutput(JSON.stringify([]));
 
   var lastRow = sheet.getLastRow();
-  // Datos empiezan fila 3, Columnas R(18) a V(22)
-  if (lastRow < 3) return ContentService.createTextOutput(JSON.stringify([]));
+  // Estructura A:H (Columnas 1 a 8)
+  if (lastRow < 2) return ContentService.createTextOutput(JSON.stringify([]));
   
-  var data = sheet.getRange(3, 18, lastRow - 2, 5).getValues();
+  // Leer columnas A hasta H (8 columnas)
+  var data = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
   
   var inventory = [];
   for (var i = 0; i < data.length; i++) {
     var row = data[i];
-    // Validar que tenga Nombre (col 1) y Stock (col 4) > 0
-    if (row[1] && row[0]) {
+    
+    // Column Index Mapping (0-based):
+    // 0: IMEI (A)
+    // 1: Nombre (B)
+    // 2: Categ (C)
+    // 3: Precio (D)
+    // 4: Stock (E)
+    // 7: Barcode (H)
+
+    // Validar que tenga IMEI/Código (0) o Nombre (1)
+    if (row[0] || row[1]) {
+       // Usamos IMEI (col A) como código principal
+       var code = String(row[0]);
+       
+       // Si el IMEI está vacío, intentar usar BARCODE (col H)
+       if (!code || code === "") {
+          code = String(row[7]); 
+       }
+
        inventory.push({
-         code: String(row[0]),       // R: IMEI
-         name: String(row[1]),       // S: Nombre
-         category: String(row[2]),   // T: Categ
-         priceUSD: Number(row[3]) || 0, // U: Precio
-         stock: Number(row[4]) || 0  // V: Stock
+         id: code,                   // <--- FIX: Enviamos ID explícito
+         code: code,                 // A o H
+         name: String(row[1]),       // B
+         category: String(row[2]),   // C
+         priceUSD: Number(row[3]) || 0, // D
+         stock: Number(row[4]) || 0  // E
        });
     }
   }
@@ -152,7 +167,6 @@ function doPost(e) {
     
     var data = JSON.parse(e.postData.contents);
     
-    // Concatenación segura
     var itemString = "";
     if (data.items && data.items.length) {
       itemString = data.items.map(function(i) {
@@ -160,7 +174,6 @@ function doPost(e) {
       }).join(", ");
     }
     
-    // Crédito
     var creditString = "N/A";
     if (data.creditDetails) {
       creditString = data.creditDetails.provider + 
@@ -168,7 +181,7 @@ function doPost(e) {
         " | Cuotas: " + (data.creditDetails.installments ? data.creditDetails.installments.length : 0);
     }
 
-    // Fecha con formato local Venezuela (GMT-4)
+    // Fecha GMT-4 Venezuela
     var dateObj = new Date(data.date);
     var dateStr = Utilities.formatDate(dateObj, "GMT-4", "dd/MM/yyyy hh:mm a");
 
@@ -188,7 +201,7 @@ function doPost(e) {
     ]);
     
     if (data.items) {
-      updateStockInProcdinvent(data.items);
+      updateStockInProductos(data.items);
     }
     
     return ContentService.createTextOutput(JSON.stringify({success: true, message: "Venta registrada exitosamente"}))
@@ -200,32 +213,39 @@ function doPost(e) {
   }
 }
 
-function updateStockInProcdinvent(items) {
+function updateStockInProductos(items) {
   var ss = SpreadsheetApp.openById(SHEET_ID);
-  var sheet = ss.getSheetByName("PROCDINVENT");
-  var lastRow = sheet.getLastRow();
+  var sheet = ss.getSheetByName("Productos");
   
-  if (lastRow < 3) return;
+  if (!sheet) return;
 
-  // Columna R (18) = IMEI
-  var imeiValues = sheet.getRange(3, 18, lastRow - 2, 1).getValues();
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return;
+
+  // Obtenemos Columna A (IMEI) y Columna H (Barcode) para buscar
+  // Rango: A2:H_lastRow
+  var dataRange = sheet.getRange(2, 1, lastRow - 1, 8);
+  var values = dataRange.getValues();
   
-  // Aplanar array
-  var flatImeis = [];
-  for (var k = 0; k < imeiValues.length; k++) {
-    flatImeis.push(String(imeiValues[k][0]));
-  }
-  
+  // Recorrer items vendidos
   items.forEach(function(item) {
-    var codeToFind = String(item.code);
-    var index = flatImeis.indexOf(codeToFind);
+    var soldCode = String(item.code);
     
-    if (index !== -1) {
-      var row = index + 3; // +3 offset
-      // Columna V (22) es Stock
-      var stockCell = sheet.getRange(row, 22);
-      var currentStock = Number(stockCell.getValue());
-      stockCell.setValue(currentStock - item.quantity);
+    // Buscar fila correspondiente
+    for (var i = 0; i < values.length; i++) {
+      var rowImei = String(values[i][0]);   // Col A
+      var rowBarcode = String(values[i][7]); // Col H
+      
+      // Coincidencia por IMEI o por Barcode
+      if (rowImei === soldCode || rowBarcode === soldCode) {
+        var rowIndex = i + 2; // +2 offset (encabezados)
+        // Columna Stock es la E (columna 5)
+        var currentStock = Number(values[i][4]); // Index 4 = Col E
+        
+        // Actualizar celda
+        sheet.getRange(rowIndex, 5).setValue(currentStock - item.quantity);
+        break; // Stop looking for this item once found
+      }
     }
   });
 }

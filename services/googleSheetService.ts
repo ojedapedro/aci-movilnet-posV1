@@ -7,7 +7,7 @@ import { MOCK_INVENTORY, MOCK_CLIENTS } from '../constants';
 // Pasos: Extensiones > Apps Script > Implementar > Nueva implementación > Web App > "Cualquier usuario"
 // =============================================================================================
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbxnicXA1d6Q0CSss2V3kjcZssmq_wZgXOAG2Ood9I3hTzAw0Qw1ePzHAPSURbj07ZgXIA/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxnicXA1d6Q0CSss2V3kjcZssmq_wZgXOAG2Ood9I3hTzAw0Qw1ePzHAPSURbj07ZgXIA/exec'
 export const fetchInventory = async (): Promise<Product[]> => {
     if (!API_URL) {
         console.warn("Modo Demo: API_URL no configurada. Usando datos de prueba.");
@@ -19,7 +19,19 @@ export const fetchInventory = async (): Promise<Product[]> => {
     try {
         const response = await fetch(`${API_URL}?action=inventory`);
         const data = await response.json();
-        return data;
+        
+        // CORRECCIÓN CRÍTICA:
+        // Aseguramos que cada producto tenga un ID único. 
+        // Si la hoja no devuelve 'id', usamos el 'code' (IMEI/Barcode).
+        if (Array.isArray(data)) {
+            return data.map((item: any) => ({
+                ...item,
+                id: item.id ? String(item.id) : String(item.code), // Fallback vital para el carrito
+                priceUSD: Number(item.priceUSD) || 0,
+                stock: Number(item.stock) || 0
+            }));
+        }
+        return [];
     } catch (error) {
         console.error("Error fetching inventory", error);
         return [];
