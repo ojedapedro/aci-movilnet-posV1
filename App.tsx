@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Product, CartItem, PaymentMethod, CreditProvider, SaleData, CreditPlan, Client } from './types';
+import { Product, CartItem, PaymentMethod, CreditProvider, SaleData, CreditPlan, Client, CashMethod } from './types';
 import { COMPANY_INFO, BACKEND_SCRIPT_INSTRUCTIONS } from './constants';
 import { fetchInventory, saveSale, fetchClients } from './services/googleSheetService';
 import { formatCurrency, calculateInstallments } from './utils/finance';
@@ -18,7 +18,8 @@ import {
   CreditCard as IdCard,
   Phone,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  Wallet
 } from 'lucide-react';
 
 export default function App() {
@@ -38,6 +39,7 @@ export default function App() {
   const [clientId, setClientId] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
+  const [cashMethod, setCashMethod] = useState<CashMethod>(CashMethod.CASH_USD);
   const [creditProvider, setCreditProvider] = useState<CreditProvider>(CreditProvider.CASHEA);
   const [observations, setObservations] = useState('');
   
@@ -144,6 +146,7 @@ export default function App() {
       clientPhone,
       items: cart,
       paymentMethod,
+      cashMethod: paymentMethod === PaymentMethod.CASH ? cashMethod : undefined,
       creditDetails: getCreditPlan(),
       totalUSD,
       totalBs,
@@ -180,6 +183,7 @@ export default function App() {
       message += `${item.name} x${item.quantity}\n`;
     });
     message += `------------------\n`;
+    
     if (saleComplete.paymentMethod === PaymentMethod.CREDIT) {
        message += `Método: Crédito (${saleComplete.creditDetails?.provider})\n`;
        const nextPayment = saleComplete.creditDetails?.installments[0];
@@ -187,7 +191,7 @@ export default function App() {
            message += `Próxima cuota: ${nextPayment.date} (${formatCurrency(nextPayment.amountUSD, 'USD')})`;
        }
     } else {
-       message += `Método: Contado`;
+       message += `Método: Contado (${saleComplete.cashMethod})`;
     }
 
     const url = `https://wa.me/58${saleComplete.clientPhone.replace(/^0/, '')}?text=${encodeURIComponent(message)}`;
@@ -510,6 +514,21 @@ export default function App() {
                </button>
              </div>
              
+             {/* Cash Sub-Options */}
+             {paymentMethod === PaymentMethod.CASH && (
+                 <div className="mt-3 grid grid-cols-2 lg:grid-cols-3 gap-2 animate-in fade-in slide-in-from-top-2">
+                     {Object.values(CashMethod).map((method) => (
+                         <button
+                             key={method}
+                             onClick={() => setCashMethod(method)}
+                             className={`px-2 py-2 rounded text-xs font-semibold border transition-all ${cashMethod === method ? 'bg-movilnet-orange text-white border-movilnet-orange shadow-md scale-105' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'}`}
+                         >
+                             {method}
+                         </button>
+                     ))}
+                 </div>
+             )}
+
              {/* Credit Options */}
              {paymentMethod === PaymentMethod.CREDIT && creditPlanPreview && (
                <div className="mt-3 bg-white p-3 rounded border border-movilnet-orange/30 animate-in fade-in slide-in-from-top-2">

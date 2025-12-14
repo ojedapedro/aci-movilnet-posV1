@@ -3,6 +3,18 @@ export enum PaymentMethod {
     CREDIT = 'Crédito'
 }
 
+export enum CashMethod {
+    CASH_USD = 'Efectivo $',
+    CASH_BS = 'Efectivo Bs',
+    CASH_EURO = 'Efectivo Euro',
+    PAGO_MOVIL = 'Pago Móvil',
+    TRANSFER = 'Transferencia',
+    DEBIT_CARD = 'Tarjeta Débito',
+    CREDIT_CARD = 'Tarjeta Crédito',
+    ZELLE = 'Zelle',
+    BINANCE = 'Binance'
+}
+
 export enum CreditProvider {
     CASHEA = 'Cashea',
     ZONA_NARANJA = 'Zona Naranja',
@@ -49,6 +61,7 @@ export interface SaleData {
     clientPhone: string;
     items: CartItem[];
     paymentMethod: PaymentMethod;
+    cashMethod?: CashMethod; // New field for specific cash type
     creditDetails?: CreditPlan;
     totalUSD: number;
     totalBs: number;

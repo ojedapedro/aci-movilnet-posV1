@@ -89,7 +89,12 @@ const Invoice: React.FC<InvoiceProps> = ({ data }) => {
                 {/* Left: Payment Method */}
                 <div className="w-1/2">
                     <h3 className="font-bold text-[#00549F] mb-1">Forma de Pago</h3>
-                    <p className="text-lg text-gray-800">{data.paymentMethod}</p>
+                    <p className="text-lg text-gray-800">
+                        {data.paymentMethod} 
+                        {data.paymentMethod === PaymentMethod.CASH && data.cashMethod && (
+                            <span className="block text-sm font-medium text-[#F37021] mt-1">{data.cashMethod}</span>
+                        )}
+                    </p>
                     
                     {data.paymentMethod === PaymentMethod.CREDIT && data.creditDetails && (
                          <p className="text-sm text-gray-500 mt-1">
