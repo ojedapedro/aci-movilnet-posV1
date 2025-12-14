@@ -166,18 +166,22 @@ function doPost(e) {
     var lastRow = sheet.getLastRow();
     
     if (lastRow > 1) {
-      // Obtenemos todos los valores de la columna A (ID)
-      var ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues().flat();
-      // Filtramos vacíos
-      var validIds = ids.filter(function(id) { return id && String(id).indexOf("PTV-") === 0; });
+      // Obtenemos todos los valores de la columna A de golpe
+      var ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
       
-      if (validIds.length > 0) {
-        var lastIdVal = validIds[validIds.length - 1]; // Tomamos el último válido
-        var match = String(lastIdVal).match(/PTV-(\\d+)/);
-        if (match) {
-           var currentNum = parseInt(match[1], 10);
-           var nextNum = currentNum + 1;
-           nextId = "PTV-" + ("00000000" + nextNum).slice(-8);
+      // Iteramos de atras hacia adelante para encontrar el ultimo ID real
+      // Esto evita problemas con filas vacias o sucias
+      for (var i = ids.length - 1; i >= 0; i--) {
+        var currentVal = String(ids[i][0]);
+        if (currentVal && currentVal.indexOf("PTV-") === 0) {
+           // Usamos split en lugar de regex compleja para evitar errores de escape
+           var parts = currentVal.split("-"); 
+           if (parts.length === 2) {
+             var num = parseInt(parts[1], 10);
+             var nextNum = num + 1;
+             nextId = "PTV-" + ("00000000" + nextNum).slice(-8);
+             break; // Encontramos el ultimo, salimos del loop
+           }
         }
       }
     }

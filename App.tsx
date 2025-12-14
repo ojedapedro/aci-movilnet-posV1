@@ -124,9 +124,11 @@ export default function App() {
   };
 
   const selectClient = (client: Client) => {
+      // Set values immediately
       setClientName(client.name);
       setClientId(client.id);
       setClientPhone(client.phone);
+      // Close dropdowns
       setShowNameSuggestions(false);
       setShowIdSuggestions(false);
   };
@@ -456,7 +458,7 @@ export default function App() {
                                 <li 
                                     key={i} 
                                     className="p-2 text-xs hover:bg-gray-100 cursor-pointer border-b border-gray-50"
-                                    onClick={() => selectClient(c)}
+                                    onMouseDown={() => selectClient(c)} // Using onMouseDown to fire before onBlur
                                 >
                                     <span className="font-bold text-movilnet-blue">{c.id}</span> - {c.name}
                                 </li>
@@ -498,7 +500,7 @@ export default function App() {
                             <li 
                                 key={i} 
                                 className="p-2 text-xs hover:bg-gray-100 cursor-pointer border-b border-gray-50"
-                                onClick={() => selectClient(c)}
+                                onMouseDown={() => selectClient(c)} // Using onMouseDown to fire before onBlur
                             >
                                 <span className="font-bold">{c.name}</span> <span className="text-gray-500">({c.id})</span>
                             </li>
