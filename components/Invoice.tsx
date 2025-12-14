@@ -8,6 +8,11 @@ interface InvoiceProps {
 }
 
 const Invoice: React.FC<InvoiceProps> = ({ data }) => {
+    // Calculate initial payment equivalent in Bs
+    const initialBs = data.creditDetails 
+        ? data.creditDetails.initialPaymentUSD * data.exchangeRate 
+        : 0;
+
     return (
         <div id="printable-area" className="bg-white text-gray-800 hidden print:block w-full max-w-[210mm] mx-auto p-8 relative">
             <style>
@@ -136,10 +141,15 @@ const Invoice: React.FC<InvoiceProps> = ({ data }) => {
                         Cronograma de Pagos ({data.creditDetails.provider})
                     </h4>
                     
-                    {/* Initial Payment */}
-                    <div className="flex justify-between items-center mb-3 bg-white p-2 border border-gray-100 rounded">
-                        <span className="font-bold text-sm">Inicial (Pagada Hoy):</span>
-                        <span className="font-bold text-lg text-[#F37021]">{formatCurrency(data.creditDetails.initialPaymentUSD, 'USD')}</span>
+                    {/* Initial Payment Display (USD and Bs) */}
+                    <div className="flex justify-between items-center mb-3 bg-white p-3 border border-gray-100 rounded shadow-sm">
+                        <span className="font-bold text-sm text-gray-700">Inicial (Pagada Hoy):</span>
+                        <div className="text-right">
+                             <span className="block font-bold text-lg text-[#F37021]">{formatCurrency(data.creditDetails.initialPaymentUSD, 'USD')}</span>
+                             <span className="block text-xs font-medium text-gray-500">
+                                 {formatCurrency(initialBs, 'VES')}
+                             </span>
+                        </div>
                     </div>
 
                     {/* Installments Grid */}
@@ -147,8 +157,13 @@ const Invoice: React.FC<InvoiceProps> = ({ data }) => {
                         {data.creditDetails.installments.map((inst) => (
                             <div key={inst.number} className="bg-white p-2 rounded border border-gray-200 text-center">
                                 <div className="text-[10px] text-gray-500 font-bold uppercase">Cuota {inst.number}</div>
-                                <div className="text-sm font-semibold text-gray-800 my-1">{inst.date}</div>
-                                <div className="text-sm font-bold text-[#00549F]">{formatCurrency(inst.amountUSD, 'USD')}</div>
+                                <div className="text-sm font-bold text-gray-800 my-1 bg-gray-50 py-1 rounded">
+                                    {inst.date}
+                                </div>
+                                <div className="text-sm font-bold text-[#00549F]">
+                                    {/* Installments strictly in USD */}
+                                    {formatCurrency(inst.amountUSD, 'USD')}
+                                </div>
                             </div>
                         ))}
                     </div>

@@ -28,7 +28,6 @@ export const BACKEND_SCRIPT_INSTRUCTIONS = `
  * 
  * NOTA: Este script cambia la estructura de la hoja 'Ventas'.
  * La Columna A ahora será "ID Venta" (PTV-XXXX).
- * Se recomienda crear una nueva hoja o ajustar las columnas manualmente si ya tienes datos.
  * 
  * HOJA ID: 1HTkRzSs8yavFTT-zqh-lHA_S2Be2X2A5Y1XMDyN13kw
  */
@@ -167,15 +166,19 @@ function doPost(e) {
     var lastRow = sheet.getLastRow();
     
     if (lastRow > 1) {
-      // Obtenemos el último ID de la Columna A
-      var lastIdVal = sheet.getRange(lastRow, 1).getValue();
-      // Extraemos el número
-      var match = String(lastIdVal).match(/PTV-(\\d+)/);
-      if (match) {
-         var currentNum = parseInt(match[1], 10);
-         var nextNum = currentNum + 1;
-         // Rellenar con ceros (8 dígitos)
-         nextId = "PTV-" + ("00000000" + nextNum).slice(-8);
+      // Obtenemos todos los valores de la columna A (ID)
+      var ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues().flat();
+      // Filtramos vacíos
+      var validIds = ids.filter(function(id) { return id && String(id).indexOf("PTV-") === 0; });
+      
+      if (validIds.length > 0) {
+        var lastIdVal = validIds[validIds.length - 1]; // Tomamos el último válido
+        var match = String(lastIdVal).match(/PTV-(\\d+)/);
+        if (match) {
+           var currentNum = parseInt(match[1], 10);
+           var nextNum = currentNum + 1;
+           nextId = "PTV-" + ("00000000" + nextNum).slice(-8);
+        }
       }
     }
 

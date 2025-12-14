@@ -50,9 +50,14 @@ export const calculateInstallments = (
         
         currentDate = new Date(nextDate); // Update cursor
 
+        // Manually format date to dd/mm/yyyy to avoid locale issues in print
+        const day = String(currentDate.getDate()).padStart(2, '0');
+        const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+        const year = currentDate.getFullYear();
+
         installments.push({
             number: i,
-            date: currentDate.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+            date: `${day}/${month}/${year}`,
             amountUSD: installmentAmountUSD,
             amountBs: installmentAmountUSD * rate
         });
