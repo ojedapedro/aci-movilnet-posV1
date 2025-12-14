@@ -23,10 +23,12 @@ export const BACKEND_SCRIPT_INSTRUCTIONS = `
  *  ⚠️ INSTRUCCIONES IMPORTANTES ⚠️
  * ==============================================================
  * 1. BORRA TODO EL CÓDIGO QUE HAYA ACTUALMENTE EN ESTE ARCHIVO.
- *    (El archivo debe quedar totalmente en blanco antes de pegar).
  * 2. PEGA ESTE CÓDIGO.
- * 3. GUARDA (Icono de Disquete).
- * 4. DALE A "IMPLEMENTAR" > "GESTIONAR IMPLEMENTACIONES" > EDITAR > VERSION "NUEVA" > LISTO.
+ * 3. GUARDA Y PUBLICA COMO NUEVA VERSIÓN.
+ * 
+ * NOTA: Este script cambia la estructura de la hoja 'Ventas'.
+ * La Columna A ahora será "ID Venta" (PTV-XXXX).
+ * Se recomienda crear una nueva hoja o ajustar las columnas manualmente si ya tienes datos.
  * 
  * HOJA ID: 1HTkRzSs8yavFTT-zqh-lHA_S2Be2X2A5Y1XMDyN13kw
  */
@@ -42,7 +44,9 @@ function setup() {
     salesSheet = ss.insertSheet("Ventas");
   }
   
+  // NUEVA ESTRUCTURA: Col A = ID Venta
   var salesHeaders = [
+    "ID Venta",
     "Fecha", 
     "Nombre Cliente", 
     "Cédula", 
@@ -58,21 +62,22 @@ function setup() {
   ];
   
   // Verificar encabezados de Ventas
-  var range = salesSheet.getRange(1, 1, 1, salesHeaders.length);
-  var values = range.getValues()[0];
-  if (values[0] !== "Fecha") {
-    // Solo si está vacía o incorrecta, agregamos encabezados
-    if (salesSheet.getLastRow() < 1) {
-       salesSheet.appendRow(salesHeaders);
-       salesSheet.getRange(1, 1, 1, salesHeaders.length)
-         .setFontWeight("bold")
-         .setBackground("#F37021") // Naranja Movilnet
-         .setFontColor("white");
-    }
+  if (salesSheet.getLastRow() < 1) {
+     salesSheet.appendRow(salesHeaders);
+     salesSheet.getRange(1, 1, 1, salesHeaders.length)
+       .setFontWeight("bold")
+       .setBackground("#F37021") // Naranja Movilnet
+       .setFontColor("white");
+  } else {
+     // Si la columna A1 no dice "ID Venta", insertamos columna
+     var a1 = salesSheet.getRange("A1").getValue();
+     if (a1 !== "ID Venta") {
+        salesSheet.insertColumns(1);
+        salesSheet.getRange("A1").setValue("ID Venta").setFontWeight("bold").setBackground("#F37021").setFontColor("white");
+     }
   }
 
   // --- 2. Configurar Hoja PRODUCTOS ---
-  // Estructura: IMEI(A), Nombre(B), Categ(C), Precio(D), Stock(E), Proveedor(F), Fecha(G), Barcode(H)
   var invSheet = ss.getSheetByName("Productos");
   if (!invSheet) {
     invSheet = ss.insertSheet("Productos");
@@ -93,7 +98,10 @@ function doGet(e) {
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return ContentService.createTextOutput("[]");
 
-    var data = sheet.getRange(2, 2, lastRow - 1, 3).getValues();
+    // Ajuste por nueva columna ID:
+    // Col A(1)=ID, Col B(2)=Fecha, Col C(3)=Nombre, Col D(4)=Cedula, Col E(5)=Telefono
+    // Leemos desde C2 hasta E_lastrow
+    var data = sheet.getRange(2, 3, lastRow - 1, 3).getValues();
     var clientsMap = {}; 
     var clientsList = [];
 
@@ -117,41 +125,26 @@ function doGet(e) {
   if (!sheet) return ContentService.createTextOutput(JSON.stringify([]));
 
   var lastRow = sheet.getLastRow();
-  // Estructura A:H (Columnas 1 a 8)
   if (lastRow < 2) return ContentService.createTextOutput(JSON.stringify([]));
   
-  // Leer columnas A hasta H (8 columnas)
   var data = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
   
   var inventory = [];
   for (var i = 0; i < data.length; i++) {
     var row = data[i];
-    
-    // Column Index Mapping (0-based):
-    // 0: IMEI (A)
-    // 1: Nombre (B)
-    // 2: Categ (C)
-    // 3: Precio (D)
-    // 4: Stock (E)
-    // 7: Barcode (H)
-
-    // Validar que tenga IMEI/Código (0) o Nombre (1)
     if (row[0] || row[1]) {
-       // Usamos IMEI (col A) como código principal
        var code = String(row[0]);
-       
-       // Si el IMEI está vacío, intentar usar BARCODE (col H)
        if (!code || code === "") {
           code = String(row[7]); 
        }
 
        inventory.push({
-         id: code,                   // <--- FIX: Enviamos ID explícito
-         code: code,                 // A o H
-         name: String(row[1]),       // B
-         category: String(row[2]),   // C
-         priceUSD: Number(row[3]) || 0, // D
-         stock: Number(row[4]) || 0  // E
+         id: code,
+         code: code,
+         name: String(row[1]),
+         category: String(row[2]),
+         priceUSD: Number(row[3]) || 0,
+         stock: Number(row[4]) || 0
        });
     }
   }
@@ -161,12 +154,31 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  var lock = LockService.getScriptLock();
+  lock.tryLock(10000); // Evitar colisiones de IDs
+
   try {
     var ss = SpreadsheetApp.openById(SHEET_ID);
     var sheet = ss.getSheetByName("Ventas");
-    
     var data = JSON.parse(e.postData.contents);
     
+    // --- GENERAR ID CORRELATIVO (PTV-XXXXXXXX) ---
+    var nextId = "PTV-00000001";
+    var lastRow = sheet.getLastRow();
+    
+    if (lastRow > 1) {
+      // Obtenemos el último ID de la Columna A
+      var lastIdVal = sheet.getRange(lastRow, 1).getValue();
+      // Extraemos el número
+      var match = String(lastIdVal).match(/PTV-(\\d+)/);
+      if (match) {
+         var currentNum = parseInt(match[1], 10);
+         var nextNum = currentNum + 1;
+         // Rellenar con ceros (8 dígitos)
+         nextId = "PTV-" + ("00000000" + nextNum).slice(-8);
+      }
+    }
+
     var itemString = "";
     if (data.items && data.items.length) {
       itemString = data.items.map(function(i) {
@@ -180,13 +192,20 @@ function doPost(e) {
         " | Inicial: $" + data.creditDetails.initialPaymentUSD + 
         " | Cuotas: " + (data.creditDetails.installments ? data.creditDetails.installments.length : 0);
     }
+    
+    // Método de pago completo (incluyendo detalle de efectivo si aplica)
+    var paymentFull = data.paymentMethod;
+    if (data.cashMethod) {
+       paymentFull += " (" + data.cashMethod + ")";
+    }
 
     // Fecha GMT-4 Venezuela
     var dateObj = new Date(data.date);
     var dateStr = Utilities.formatDate(dateObj, "GMT-4", "dd/MM/yyyy hh:mm a");
 
     sheet.appendRow([
-      dateStr,
+      nextId,           // Col A: ID Venta
+      dateStr,          // Col B: Fecha
       data.clientName,
       String(data.clientId),
       String(data.clientPhone),
@@ -194,7 +213,7 @@ function doPost(e) {
       data.totalUSD,
       data.totalBs,
       data.exchangeRate,
-      data.paymentMethod,
+      paymentFull,
       creditString,
       data.observations,
       "Completado"
@@ -204,47 +223,41 @@ function doPost(e) {
       updateStockInProductos(data.items);
     }
     
-    return ContentService.createTextOutput(JSON.stringify({success: true, message: "Venta registrada exitosamente"}))
-      .setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({
+        success: true, 
+        message: "Venta registrada exitosamente",
+        data: { saleId: nextId } // Retornamos el ID al frontend
+    })).setMimeType(ContentService.MimeType.JSON);
       
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({success: false, message: "Error: " + err.toString()}))
       .setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    lock.releaseLock();
   }
 }
 
 function updateStockInProductos(items) {
   var ss = SpreadsheetApp.openById(SHEET_ID);
   var sheet = ss.getSheetByName("Productos");
-  
   if (!sheet) return;
 
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return;
 
-  // Obtenemos Columna A (IMEI) y Columna H (Barcode) para buscar
-  // Rango: A2:H_lastRow
   var dataRange = sheet.getRange(2, 1, lastRow - 1, 8);
   var values = dataRange.getValues();
   
-  // Recorrer items vendidos
   items.forEach(function(item) {
     var soldCode = String(item.code);
-    
-    // Buscar fila correspondiente
     for (var i = 0; i < values.length; i++) {
-      var rowImei = String(values[i][0]);   // Col A
-      var rowBarcode = String(values[i][7]); // Col H
-      
-      // Coincidencia por IMEI o por Barcode
+      var rowImei = String(values[i][0]);
+      var rowBarcode = String(values[i][7]);
       if (rowImei === soldCode || rowBarcode === soldCode) {
-        var rowIndex = i + 2; // +2 offset (encabezados)
-        // Columna Stock es la E (columna 5)
-        var currentStock = Number(values[i][4]); // Index 4 = Col E
-        
-        // Actualizar celda
+        var rowIndex = i + 2;
+        var currentStock = Number(values[i][4]);
         sheet.getRange(rowIndex, 5).setValue(currentStock - item.quantity);
-        break; // Stop looking for this item once found
+        break;
       }
     }
   });

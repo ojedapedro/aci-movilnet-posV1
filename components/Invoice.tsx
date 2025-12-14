@@ -34,7 +34,13 @@ const Invoice: React.FC<InvoiceProps> = ({ data }) => {
                     <h2 className="text-2xl font-bold text-[#F37021] mb-2 uppercase tracking-wide">RECIBO DE VENTA</h2>
                     <div className="text-sm text-gray-600">
                         <p className="mb-1"><span className="font-semibold">Fecha:</span> {new Date(data.date).toLocaleDateString('es-VE')} {new Date(data.date).toLocaleTimeString('es-VE')}</p>
-                        <p><span className="font-semibold">ID Venta:</span> {data.date.replace(/\D/g,'').slice(0, 10)}</p>
+                        <p>
+                            <span className="font-semibold">ID Venta:</span> 
+                            {/* Use specific ID if available (PTV-XXX), otherwise fallback to date-based */}
+                            <span className="font-mono font-bold ml-1 text-[#00549F]">
+                                {data.id ? data.id : data.date.replace(/\D/g,'').slice(0, 10)}
+                            </span>
+                        </p>
                     </div>
                 </div>
             </div>

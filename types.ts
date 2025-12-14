@@ -55,6 +55,7 @@ export interface Client {
 }
 
 export interface SaleData {
+    id?: string; // Correlative ID (PTV-XXXXXX)
     date: string;
     clientName: string;
     clientId: string;

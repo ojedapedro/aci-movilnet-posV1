@@ -157,7 +157,14 @@ export default function App() {
     const res = await saveSale(saleData);
     
     if (res.success) {
-      setSaleComplete(saleData);
+      // Use the ID returned by the backend, or fallback if using Mock
+      const finalSaleId = res.data?.saleId;
+      const finalSaleData = { 
+          ...saleData, 
+          id: finalSaleId // Inject the backend ID into the state
+      };
+
+      setSaleComplete(finalSaleData);
       setCart([]);
       setClientName('');
       setClientId('');
@@ -175,6 +182,10 @@ export default function App() {
     if (!saleComplete) return;
     
     let message = `*ACI Movilnet - Comprobante de Venta*\n`;
+    // Include ID in WhatsApp message if available
+    if (saleComplete.id) {
+        message += `ID: ${saleComplete.id}\n`;
+    }
     message += `Cliente: ${saleComplete.clientName}\n`;
     message += `Fecha: ${new Date(saleComplete.date).toLocaleDateString()}\n`;
     message += `*Total: ${formatCurrency(saleComplete.totalUSD, 'USD')}*\n`;
@@ -205,7 +216,8 @@ export default function App() {
         // Sanitize filename
         const safeName = saleComplete.clientName.replace(/[^a-z0-9]/gi, '_');
         const safeId = saleComplete.clientId.replace(/[^a-z0-9]/gi, '');
-        document.title = `RECIBO_${safeName}_${safeId}`;
+        const fileId = saleComplete.id || safeId;
+        document.title = `RECIBO_${fileId}_${safeName}`;
     }
     
     window.print();
