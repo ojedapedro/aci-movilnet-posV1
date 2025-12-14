@@ -42,7 +42,7 @@ const Invoice: React.FC<InvoiceProps> = ({ data }) => {
             {/* Orange Separator */}
             <div className="w-full h-0.5 bg-[#F37021] mb-6"></div>
 
-            {/* Client Info Grid - Matches screenshot layout */}
+            {/* Client Info Grid - Matches screenshot layout but excludes Exchange Rate */}
             <div className="grid grid-cols-2 gap-y-6 gap-x-12 mb-8 text-sm">
                 <div>
                     <span className="block text-gray-800 font-bold uppercase text-xs mb-1 tracking-wider">CLIENTE</span>
@@ -56,10 +56,7 @@ const Invoice: React.FC<InvoiceProps> = ({ data }) => {
                     <span className="block text-gray-800 font-bold uppercase text-xs mb-1 tracking-wider">TELÉFONO</span>
                     <span className="block text-gray-900 text-lg">{data.clientPhone}</span>
                 </div>
-                <div>
-                    <span className="block text-gray-800 font-bold uppercase text-xs mb-1 tracking-wider">TASA DE CAMBIO</span>
-                    <span className="block text-gray-900 text-lg">Bs. {new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2 }).format(data.exchangeRate)} / USD</span>
-                </div>
+                {/* Exchange Rate Hidden as requested */}
             </div>
 
             {/* Items Table */}

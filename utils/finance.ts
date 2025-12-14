@@ -30,29 +30,21 @@ export const calculateInstallments = (
         let nextDate = new Date(currentDate);
         let found = false;
         
-        // Find next 15th or End of Month/30th
+        // Find next 15th or 30th (or End of Month if month is short)
         while (!found) {
             nextDate.setDate(nextDate.getDate() + 1);
             const day = nextDate.getDate();
             const lastDayOfMonth = getEndOfMonth(nextDate.getFullYear(), nextDate.getMonth());
             
-            // Logic: Pay on 15th OR the last day of the month (which covers 28, 29, 30, 31)
-            // Ideally we want "15 and 30", but Feb doesn't have 30.
-            if (day === 15 || day === lastDayOfMonth || day === 30) {
-                // If it's the 30th or last day, we take it.
-                // Avoid duplicate trigger if month has 31 days (don't trigger on 30 AND 31)
-                // If today is 30th and month has 31, we wait for next cycle? 
-                // Let's stick to strict: if we hit 15, take it. If we hit the absolute last day of month, take it.
-                // OR if we hit 30 and it's not Feb, take it.
-                
-                if (day === 15) {
-                    found = true;
-                } else if (day === lastDayOfMonth) {
-                    found = true;
-                } else if (day === 30) {
-                     // If month has 31 days, 30 is fine too as "end of month" proximity
-                     found = true;
-                }
+            // Logic: Pay strictly on the 15th OR the 30th.
+            // Exception: If month has less than 30 days (Feb), pay on the last day.
+            
+            const isFifteenth = day === 15;
+            const isThirtieth = day === 30;
+            const isEndOfMonthShort = day === lastDayOfMonth && lastDayOfMonth < 30; // Catch Feb 28/29
+
+            if (isFifteenth || isThirtieth || isEndOfMonthShort) {
+                found = true;
             }
         }
         
