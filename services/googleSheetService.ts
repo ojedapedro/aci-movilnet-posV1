@@ -7,7 +7,7 @@ import { MOCK_INVENTORY, MOCK_CLIENTS } from '../constants';
 // Pasos: Extensiones > Apps Script > Implementar > Nueva implementación > Web App > "Cualquier usuario"
 // =============================================================================================
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbzELp7LFGkuZFayPF7akz6cG6vXAy8OnaA5CPaKHdVwJgVWaDYdU0XNjBY72Z-EOvPBvQ/exec'
+const API_URL = 'https://script.google.com/macros/s/AKfycbyNhdjKUXMfqhe0iEYU6NLN70hC4l5LpJi5B6DGr7Zbyxm-wZkeMFGQLcW5J_gsw4lE2Q/exec'
 export const fetchInventory = async (): Promise<Product[]> => {
     if (!API_URL) {
         console.warn("Modo Demo: API_URL no configurada. Usando datos de prueba.");
